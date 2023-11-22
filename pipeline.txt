@@ -1,0 +1,305 @@
+pipeline {
+    agent none
+    stages {
+        stage('Parallel Stages') {
+            parallel {
+                stage('Parallel Stage 1') {
+                    agent {
+                        node {
+                            label 'label'
+                            customWorkspace '/tmp/dir1'
+                        }
+                    }
+                    steps {
+                        echo pwd()
+                    }
+                }
+                stage('Parallel Stage 2') {
+                    agent {
+                        node {
+                            label 'label'
+                            customWorkspace '/tmp/dir2'
+                        }
+                    }
+                    steps {
+                        echo pwd()
+                    }
+                }
+            }
+        }
+    }
+}
+
+=============================================================================================
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Custom Workspace') {
+            steps {
+                // Use the 'ws' step to set a custom workspace for this stage
+                ws('/var/lib/jenkins/workspace/new/') {
+                    echo "Building in a custom workspace"
+                    git branch: 'master', url: 'https://github.com/rajugajjela/git1.git'
+                }
+            }
+        }
+        stage ('run the sample script') {
+            steps {
+            sh './new.sh'
+             }
+        }
+    }
+}
+
+============================================================================================
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Custom Workspace') {
+            steps {
+                // Use the 'ws' step to set a custom workspace for this stage
+                ws('/var/lib/jenkins/workspace/new/') {
+                    echo "Building in a custom workspace"
+                    git branch: 'master', url: 'https://github.com/rajugajjela/git1.git'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline succeeded! Ready for further actions...'
+        }
+        failure {
+            echo 'Pipeline failed! Take corrective actions...'
+        }
+    }
+}
+
+===========================================================================================
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Custom Workspace') {
+            steps {
+                // 'ws' step to set a custom workspace for this stage
+                ws('/var/lib/jenkins/workspace/new/') {
+                    echo "Building in a custom workspace"
+                    git branch: 'master', url: 'https://github.com/rajugajjela/git1.git'
+                }
+            }
+        }
+        stage ('run the sample script') {
+            steps {
+            dir('/var/lib/jenkins/workspace/new/') {
+                        echo "Currently in: ${pwd()}"
+                        sh './new.sh'
+                        sh 'pwd'
+                    }
+             }
+        }
+    }
+}
+
+===========================================================================================
+WITH NODE :
+
+pipeline {
+        agent 
+        
+ {
+    node {
+        label  'temp'
+        customWorkspace '/var/lib/jenkins/workspace/temp_test'
+    }
+ }
+        stages {
+        stage('Example') {
+            steps {
+                sh 'echo $WORKSPACE'
+            }
+        }
+    }
+            stages {
+        stage('Repo clone') {
+            steps {
+                 checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: '290205a2-d519-45ae-90d3-0e23209e2c29', url: 'https://github.com/rajugajjela/git1.git']])
+            }
+        }
+    }
+}
+
+
+========================================================================================================================================================
+
+
+65 ==> 3 changes in git-1
+66 ==> 3 changes in empty git
+67 ==> both changes (2-changes) 
+
+
+9 ==> changes in git-1   ==>Pollscm is triggered the build with changes
+10 ==> changes in empty git ==>Pollscm is triggered the build with changes
+11 ==> both the changes  ==>Pollscm is triggered the build with both the changes
+
+
+only changes with the jenkinsfile the build was not triggering.
+but those changes are reflected in next build.
+
+
+
+
+==============================================================================================================
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    // Define a variable in the 'Build' stage
+                    def myVariable = 'Hello from Build stage'
+                    // Pass the variable to the downstream 'Test' stage
+                    build job: 'Test', parameters: [string(name: 'DOWNSTREAM_VARIABLE', value: myVariable)]
+                }
+            }
+        }
+        stage('test1') {
+            steps {
+                script {
+                    def buildNumber = currentBuild.number
+                    sh 'echo $buildNumber'
+                    build job: 'Test', parameters: [string(name: 'RUN_VARIABLE', value: buildNumber)]
+                }
+            }
+        }
+    }
+}
+
+
+==================================================================================================================
+CHOICE PARAMETERS
+==================
+
+pipeline {
+    agent any
+    parameters {
+        choice(
+            name: 'CHOICE',
+            choices: ['one', 'two', 'three'],
+            description: ''
+        )
+    }
+    stages {
+        stage('Example') {
+            steps {
+                echo "Choice: ${params.CHOICE}"
+                sh "echo Choice: ${params.CHOICE}"
+                sh 'echo Choice: $CHOICE'
+            }
+        }
+    }
+}
+
+==============================================================================================================
+PARAMETERS IN JENKINS
+=====================
+
+pipeline {
+    agent any
+    parameters {
+        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
+
+        text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
+
+        booleanParam(name: 'TOGGLE', defaultValue: true, description: 'Toggle this value')
+
+        choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
+
+        password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password')
+    }
+    stages {
+        stage('Example') {
+            steps {
+                echo "Hello ${params.PERSON}"
+
+                echo "Biography: ${params.BIOGRAPHY}"
+
+                echo "Toggle: ${params.TOGGLE}"
+
+                echo "Choice: ${params.CHOICE}"
+
+                echo "Password: ${params.PASSWORD}"
+            }
+        }
+    }
+}
+================================================================================================================
+
+pipeline {
+    agent any
+    parameters {
+        choice(choices: ['Windows', 'Linux'], description: 'What OS?', name: 'PickAnOS')
+    }
+    stages {
+        stage("run downstream job") {
+            steps {
+                echo "${params.PickAnOS}"
+                build job: 'test_choice', parameters: [string(name: 'OS', value: 'echo ${param.PickSnOS}')]
+            }
+        }
+    }
+}
+
+DOWNSTREAM: 
+
+pipeline {
+    agent any
+
+    environment {
+        RUN_VARIABLE = "${params.OS}"
+    }
+
+    stages {
+        stage('Test_choices') {
+            steps {
+                script {
+                    echo "Variable from upstream: ${env.RUN_VARIABLE}"
+                }
+            }
+        }
+    }
+}
+
+============================================================================================================
+pipeline {
+    agent any
+    parameters {
+        choice(choices: ['One', 'Two','Three'], description: 'What is your choice?', name: 'Pick_a_num')
+    }
+    stages {
+        stage("Run Downstream Job") {
+            steps {
+                echo "Selected choice: ${params.Pick_a_num}"
+                sh```
+                smoke_available = `echo ${params.Pick_a_num`
+                build_varinat = Userdebug
+                kversion = 5.15
+                last_build = 3
+            ```
+               stage ( smoke)
+               {
+                   sh $build job: 'test_choice', parameters: [
+                    string(name: 'choice', value: "${params.Pick_a_num}")
+                ]
+            }
+        }
+    }
+}
